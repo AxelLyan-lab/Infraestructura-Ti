@@ -1,0 +1,5 @@
+firmware/
+docs/
+supabase/
+**/.env
+**/.env.local

@@ -9,7 +9,7 @@ export function getSupabasePublicConfig(): SupabasePublicConfig {
 
   if (!baseUrl || !anonKey) {
     throw new Error(
-      'Faltan variables de entorno. Cree dashboard/.env con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.',
+      'Faltan variables de entorno. Defina VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en dashboard/.env (local) o en Vercel → Settings → Environment Variables.',
     )
   }
 

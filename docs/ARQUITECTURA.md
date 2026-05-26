@@ -45,16 +45,27 @@ Esta separación mantiene la vista libre de detalles HTTP y facilita pruebas o s
 
 En conjunto: **ESP32 (edge)** + **Supabase (PaaS datos/API)** + **Vercel (hosting frontend)**.
 
-## Despliegue en Vercel (resumen)
+## Despliegue en Vercel
+
+El repositorio incluye configuración lista para Vercel:
+
+| Archivo | Uso |
+| --- | --- |
+| `vercel.json` (raíz) | Importar el repo **sin** cambiar Root Directory: instala y construye `dashboard/`, publica `dashboard/dist`. |
+| `dashboard/vercel.json` | Alternativa: en Vercel ponga **Root Directory** = `dashboard` y use el preset Vite. |
+| `dashboard/.env.example` | Plantilla de variables; en Vercel créelas en *Settings → Environment Variables*. |
+| `.vercelignore` | Excluye `firmware/`, `supabase/` y `.env` del upload (despliegue más liviano). |
+
+### Pasos
 
 1. Suba el repositorio a GitHub/GitLab/Bitbucket.
-2. En Vercel: *New Project* → importe el repo.
-3. **Root Directory**: `dashboard` (este monorepo pequeño).
-4. **Framework Preset**: Vite.
-5. **Environment Variables**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (mismos valores que en `.env` local).
-6. Despliegue: `npm run build` / salida `dist` la detecta Vercel automáticamente.
+2. [vercel.com](https://vercel.com) → **Add New Project** → importe el repo.
+3. **Opción A (recomendada):** deje la raíz del repo como está; `vercel.json` en la raíz ya apunta a `dashboard`.
+4. **Opción B:** **Root Directory** = `dashboard` (usa `dashboard/vercel.json`).
+5. Variables obligatorias (Production y Preview): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (copie desde Supabase → Project Settings → API).
+6. **Deploy**. Tras el build, la URL de Vercel sirve el panel estático; el navegador llama a PostgREST con las claves compiladas en el bundle.
 
-Tras el deploy, abra la URL de Vercel; el cliente solo necesita HTTPS y las variables `VITE_*` compiladas en el bundle.
+> Si en Supabase restringió orígenes CORS, añada su dominio `*.vercel.app` y el dominio personalizado.
 
 ## SQL y firmware
 
