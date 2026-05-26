@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchRecentAlertas } from '../data/alertasRepository'
 import type { SupabasePublicConfig } from '../data/env'
 import type { AlertaRow } from '../types/alertas'
-import { POLL_MS } from './pollMs'
+import { ALERTAS_POLL_MS } from './pollMs'
 
 export function useAlertasFeed(cfg: SupabasePublicConfig) {
   const [alertas, setAlertas] = useState<AlertaRow[]>([])
@@ -34,7 +34,7 @@ export function useAlertasFeed(cfg: SupabasePublicConfig) {
 
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0)
-    const id = window.setInterval(() => void load(), POLL_MS)
+    const id = window.setInterval(() => void load(), ALERTAS_POLL_MS)
     return () => {
       window.clearTimeout(initial)
       window.clearInterval(id)
