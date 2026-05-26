@@ -107,13 +107,6 @@ export function AlertsSection({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <h2 className={['text-lg font-semibold tracking-tight', t.textPrimary].join(' ')}>Alertas recientes</h2>
-          <p className={['mt-1 text-sm', t.textMuted].join(' ')}>
-            Advertencia: tonos amarillo/naranja. Crítica: rojo/morado (en temperatura y humedad). Umbrales: temperatura{' '}
-            {'>'} 30 °C (advertencia) y {'>'} 45 °C (crítica); humedad {'>'} 60 % (advertencia) y {'>'} 80 % (crítica).
-            Cooldown 10 min por tipo. “Limpiar recientes” solo oculta en este navegador; el historial al final del panel
-            conserva todo en Supabase. El marco rojo o amarillo/naranja rodea la etiqueta Advertencia/Crítico; el número
-            usa el mismo color que el gráfico en ese valor. Termómetro en rojo y gota en azul.
-          </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
           <div

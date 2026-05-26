@@ -103,7 +103,7 @@ export function AlertasHistorialSection({ alertas }: Props) {
         <h2 className={['text-lg font-semibold tracking-tight', t.textPrimary].join(' ')}>Historial de alertas</h2>
         <p className={['mt-1 text-sm', t.textMuted].join(' ')}>
           Registro completo en base de datos (incluye las que ocultó con “Limpiar recientes” en este navegador). Cuatro
-          columnas por tipo y severidad, con el mismo código de color que arriba.
+          columnas por tipo y severidad.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

@@ -1,10 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { getSupabasePublicConfig, type SupabasePublicConfig } from '../../data/env'
 import { useAlertasFeed } from '../../logic/useAlertasFeed'
+import { useChartSensores } from '../../logic/useChartSensores'
+import type { ChartRangeId } from '../../logic/chartRange'
+import { chartRangeById } from '../../logic/chartRange'
 import { useDismissedAlertas } from '../../logic/useDismissedAlertas'
 import { useSensoresDashboard } from '../../logic/useSensoresDashboard'
 import { AlertasHistorialSection } from '../components/AlertasHistorialSection'
 import { AlertsSection } from '../components/AlertsSection'
+import { ChartRangeSelect } from '../components/ChartRangeSelect'
 import { DashboardShell } from '../components/DashboardShell'
 import { GlassPanel } from '../components/GlassPanel'
 import { HumidityChart } from '../components/HumidityChart'
@@ -15,25 +19,35 @@ import { ThemeToggle } from '../components/ThemeToggle'
 import { useThemeTokens } from '../theme/themeTokens'
 import { toChronologicalChartPoints } from '../utils/chartSeries'
 
-function formatShortDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
-
 function DashboardWithConfig({ cfg }: { cfg: SupabasePublicConfig }) {
   const t = useThemeTokens()
+  const [tempChartRangeId, setTempChartRangeId] = useState<ChartRangeId>('live')
+  const [humChartRangeId, setHumChartRangeId] = useState<ChartRangeId>('live')
   const { dismissedIds, dismissIds } = useDismissedAlertas()
-  const { readings, latest, loading, error, lastSyncedAt } = useSensoresDashboard(cfg)
+  const { latest, loading, error, lastSyncedAt } = useSensoresDashboard(cfg)
+  const {
+    readings: tempChartReadings,
+    loading: tempChartLoading,
+    error: tempChartError,
+  } = useChartSensores(cfg, tempChartRangeId)
+  const {
+    readings: humChartReadings,
+    loading: humChartLoading,
+    error: humChartError,
+  } = useChartSensores(cfg, humChartRangeId)
   const {
     alertas,
     loading: alertsLoading,
     error: alertsError,
   } = useAlertasFeed(cfg)
-  const chartPoints = useMemo(() => toChronologicalChartPoints(readings), [readings])
+
+  const tempChartPoints = useMemo(
+    () => toChronologicalChartPoints(tempChartReadings),
+    [tempChartReadings],
+  )
+  const humChartPoints = useMemo(() => toChronologicalChartPoints(humChartReadings), [humChartReadings])
+  const tempRangeLabel = chartRangeById(tempChartRangeId).label
+  const humRangeLabel = chartRangeById(humChartRangeId).label
 
   const recentAlertas = useMemo(
     () => alertas.filter((a) => !dismissedIds.has(a.id)).slice(0, 50),
@@ -42,20 +56,22 @@ function DashboardWithConfig({ cfg }: { cfg: SupabasePublicConfig }) {
 
   const accentTempC = useMemo(() => {
     if (latest) return latest.temperatura
-    if (chartPoints.length > 0) return chartPoints[chartPoints.length - 1].temperatura
+    if (tempChartPoints.length > 0) return tempChartPoints[tempChartPoints.length - 1].temperatura
     return 20
-  }, [latest, chartPoints])
+  }, [latest, tempChartPoints])
 
   const accentHumPct = useMemo(() => {
     if (latest) return latest.humedad
-    if (chartPoints.length > 0) return chartPoints[chartPoints.length - 1].humedad
+    if (humChartPoints.length > 0) return humChartPoints[humChartPoints.length - 1].humedad
     return 50
-  }, [latest, chartPoints])
+  }, [latest, humChartPoints])
 
   const tempText = latest ? `${latest.temperatura.toFixed(1)} °C` : '—'
   const humText = latest ? `${latest.humedad.toFixed(1)} %` : '—'
   const isLive = Boolean(latest)
   const isLight = t.theme === 'light'
+  const tempChartBusy = tempChartLoading || loading
+  const humChartBusy = humChartLoading || loading
 
   const handleClearRecent = () => {
     dismissIds(recentAlertas.map((a) => a.id))
@@ -72,8 +88,7 @@ function DashboardWithConfig({ cfg }: { cfg: SupabasePublicConfig }) {
             Panel ambiental
           </h1>
           <p className={['mt-2 max-w-xl text-sm leading-relaxed', t.textMuted].join(' ')}>
-            Lecturas en tiempo casi real desde ESP32 + DHT22, persistidas en Supabase y visualizadas con una interfaz
-            minimalista inspirada en los paneles de control de Apple.
+            Lecturas en tiempo casi real desde ESP32 + DHT22, persistidas en Supabase.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -110,18 +125,8 @@ function DashboardWithConfig({ cfg }: { cfg: SupabasePublicConfig }) {
             </>
           ) : (
             <>
-              <MetricCard
-                title="Temperatura actual"
-                value={tempText}
-                subtitle={latest ? `Sensor · ${formatShortDate(latest.fecha)}` : 'Aún no hay lecturas en la tabla'}
-                accent="sky"
-              />
-              <MetricCard
-                title="Humedad relativa"
-                value={humText}
-                subtitle={latest ? 'DHT22 (AM2302) · GPIO23' : 'Verifique el firmware y las políticas RLS'}
-                accent="violet"
-              />
+              <MetricCard title="Temperatura actual" value={tempText} accent="sky" />
+              <MetricCard title="Humedad relativa" value={humText} accent="violet" />
             </>
           )}
         </section>
@@ -135,57 +140,77 @@ function DashboardWithConfig({ cfg }: { cfg: SupabasePublicConfig }) {
         />
 
         <GlassPanel as="section" className="p-5 sm:p-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className={['text-lg font-semibold tracking-tight', t.textPrimary].join(' ')}>Temperatura · serie</h2>
               <p className={['text-sm', t.textMuted].join(' ')}>Histórico de °C (eje 0–100).</p>
             </div>
-            <p className={['text-xs uppercase tracking-[0.22em]', t.textEyebrow].join(' ')}>
-              {chartPoints.length ? `${chartPoints.length} muestras` : 'Sin serie'}
-            </p>
+            <ChartRangeSelect
+              value={tempChartRangeId}
+              onChange={setTempChartRangeId}
+              disabled={tempChartBusy}
+            />
           </div>
+          {tempChartError ? (
+            <p className={['mt-2 text-sm', isLight ? 'text-rose-700' : 'text-rose-200/90'].join(' ')}>
+              {tempChartError}
+            </p>
+          ) : null}
+          <p className={['mt-2 text-xs uppercase tracking-[0.22em]', t.textEyebrow].join(' ')}>
+            {tempChartPoints.length
+              ? `${tempChartPoints.length} muestras · ${tempRangeLabel}`
+              : `Sin serie · ${tempRangeLabel}`}
+          </p>
           <div className="mt-6">
-            {loading ? (
+            {tempChartBusy ? (
               <div
                 className={[
                   'h-[300px] animate-pulse rounded-2xl ring-1 sm:h-[360px]',
                   isLight ? 'bg-slate-900/[0.04] ring-slate-900/10' : 'bg-white/[0.04] ring-white/10',
                 ].join(' ')}
               />
-            ) : chartPoints.length < 2 ? (
+            ) : tempChartPoints.length < 2 ? (
               <p className={['py-16 text-center text-sm', t.textMuted].join(' ')}>
-                Se necesitan al menos dos lecturas para trazar la serie.
+                Se necesitan al menos dos lecturas en el rango seleccionado.
               </p>
             ) : (
-              <TemperatureChart data={chartPoints} accentTempC={accentTempC} />
+              <TemperatureChart data={tempChartPoints} accentTempC={accentTempC} />
             )}
           </div>
         </GlassPanel>
 
         <GlassPanel as="section" className="p-5 sm:p-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className={['text-lg font-semibold tracking-tight', t.textPrimary].join(' ')}>Humedad · serie</h2>
               <p className={['text-sm', t.textMuted].join(' ')}>Histórico de % HR (eje 0–100).</p>
             </div>
-            <p className={['text-xs uppercase tracking-[0.22em]', t.textEyebrow].join(' ')}>
-              {chartPoints.length ? `${chartPoints.length} muestras` : 'Sin serie'}
-            </p>
+            <ChartRangeSelect value={humChartRangeId} onChange={setHumChartRangeId} disabled={humChartBusy} />
           </div>
+          {humChartError ? (
+            <p className={['mt-2 text-sm', isLight ? 'text-rose-700' : 'text-rose-200/90'].join(' ')}>
+              {humChartError}
+            </p>
+          ) : null}
+          <p className={['mt-2 text-xs uppercase tracking-[0.22em]', t.textEyebrow].join(' ')}>
+            {humChartPoints.length
+              ? `${humChartPoints.length} muestras · ${humRangeLabel}`
+              : `Sin serie · ${humRangeLabel}`}
+          </p>
           <div className="mt-6">
-            {loading ? (
+            {humChartBusy ? (
               <div
                 className={[
                   'h-[300px] animate-pulse rounded-2xl ring-1 sm:h-[360px]',
                   isLight ? 'bg-slate-900/[0.04] ring-slate-900/10' : 'bg-white/[0.04] ring-white/10',
                 ].join(' ')}
               />
-            ) : chartPoints.length < 2 ? (
+            ) : humChartPoints.length < 2 ? (
               <p className={['py-16 text-center text-sm', t.textMuted].join(' ')}>
-                Se necesitan al menos dos lecturas para trazar la serie.
+                Se necesitan al menos dos lecturas en el rango seleccionado.
               </p>
             ) : (
-              <HumidityChart data={chartPoints} accentHumPct={accentHumPct} />
+              <HumidityChart data={humChartPoints} accentHumPct={accentHumPct} />
             )}
           </div>
         </GlassPanel>

@@ -18,10 +18,22 @@ export async function fetchRecentSensores(
   cfg: SupabasePublicConfig,
   limit = 120,
 ): Promise<SensorReading[]> {
+  return fetchSensoresSince(cfg, new Date(0), limit)
+}
+
+/** Lecturas desde una fecha (orden desc en API; el hook ordena para gráficos). */
+export async function fetchSensoresSince(
+  cfg: SupabasePublicConfig,
+  since: Date,
+  limit: number,
+): Promise<SensorReading[]> {
   const url = new URL(`${cfg.baseUrl}/rest/v1/sensores`)
   url.searchParams.set('select', 'id,temperatura,humedad,fecha')
   url.searchParams.set('order', 'fecha.desc')
   url.searchParams.set('limit', String(limit))
+  if (since.getTime() > 0) {
+    url.searchParams.set('fecha', `gte.${since.toISOString()}`)
+  }
 
   const res = await fetch(url.toString(), {
     method: 'GET',
